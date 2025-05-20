@@ -13,7 +13,7 @@ const naturalScale   = ['C','D','E','F','G','A','B'];
 const DEFAULT_WIDTH  = 60;
 const DEFAULT_HEIGHT = 150;
 const BAR_GAP        = 20;
-const SIDE_MARGIN    = 20;
+const VERTICAL_GAP   = 10; // gap between bars and submit button
 
 // Dynamic vars
 let notes = [], answerOrder = [], dropOrder = [];
@@ -52,7 +52,7 @@ const errorMessages = [
 // Recalculate bar dimensions based on viewport width
 function updateBarDimensions() {
   const n = naturalScale.length + 1; // 8 bars
-  const available = window.innerWidth - 2 * SIDE_MARGIN;
+  const available = window.innerWidth;
   const totalGaps = (n - 1) * BAR_GAP;
   const maxBarW = (available - totalGaps) / n;
   currentBarW = Math.min(DEFAULT_WIDTH, Math.max(30, maxBarW));
@@ -80,10 +80,16 @@ function initScale() {
   shuffleArray(notes);
 }
 
-// Create bars with dynamic sizing
+// Create bars with dynamic sizing and centered above submit button
 function createBars() {
   updateBarDimensions();
   document.querySelectorAll('.bar').forEach(b => b.remove());
+  const n = notes.length;
+  const totalWidth = n * currentBarW + (n - 1) * BAR_GAP;
+  const startX = (window.innerWidth - totalWidth) / 2;
+  const sbRect = submitBtn.getBoundingClientRect();
+  const yPos = sbRect.top - currentBarH - VERTICAL_GAP;
+
   notes.forEach((note, i) => {
     const bar = document.createElement('div');
     bar.className = 'bar';
@@ -93,9 +99,9 @@ function createBars() {
     bar.style.background = colors[note];
     bar.style.width = `${currentBarW}px`;
     bar.style.height = `${currentBarH}px`;
-    const x = SIDE_MARGIN + i * (currentBarW + BAR_GAP);
+    const x = startX + i * (currentBarW + BAR_GAP);
     bar.style.left = `${x}px`;
-    bar.style.top = '20px';
+    bar.style.top = `${yPos}px`;
     bar.dataset.originalLeft = bar.style.left;
     bar.dataset.originalTop = bar.style.top;
     document.body.appendChild(bar);
@@ -199,7 +205,7 @@ function stopTimer() {
   updateTimer();
 }
 
-// Shuffle everything and go back to the start screen
+// Shuffle and reset to start screen
 function shuffleAndReset() {
   initScale();
   createBars();
@@ -224,19 +230,25 @@ function showMessage(type) {
   }, 0);
 }
 
-// On window resize, update bar dimensions & reposition
+// On window resize, update bars and reposition
 window.addEventListener('resize', () => {
   updateBarDimensions();
+  const n = notes.length;
+  const totalWidth = n * currentBarW + (n - 1) * BAR_GAP;
+  const startX = (window.innerWidth - totalWidth) / 2;
+  const sbRect = submitBtn.getBoundingClientRect();
+  const yPos = sbRect.top - currentBarH - VERTICAL_GAP;
+
   document.querySelectorAll('.bar').forEach(bar => {
-    bar.style.width = `${currentBarW}px`;
+    bar.style.width  = `${currentBarW}px`;
     bar.style.height = `${currentBarH}px`;
     if (!dropOrder.includes(bar)) {
       const i = parseInt(bar.dataset.origIndex, 10);
-      const x = SIDE_MARGIN + i * (currentBarW + BAR_GAP);
+      const x = startX + i * (currentBarW + BAR_GAP);
       bar.style.left = `${x}px`;
-      bar.style.top = '20px';
+      bar.style.top  = `${yPos}px`;
       bar.dataset.originalLeft = bar.style.left;
-      bar.dataset.originalTop = bar.style.top;
+      bar.dataset.originalTop  = bar.style.top;
     }
   });
   repositionBars();
@@ -256,4 +268,7 @@ submitBtn.addEventListener('click', () => {
 });
 
 // Initialize on load
-window.addEventListener('load', shuffleAndReset);
+window.addEventListener('load', () => {
+  shuffleAndReset();
+  createBars();
+});
