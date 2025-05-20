@@ -1,123 +1,14 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Drag and Drop Musical Bars</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; overflow: hidden; }
-    /* Start screen overlay */
-    #start-screen {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: yellow;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-    #start-container {
-      background: white;
-      padding: 30px 40px;
-      border-radius: 12px;
-      text-align: center;
-      max-width: 80%;
-    }
-    #start-screen p {
-      font-size: 24px;
-      color: blue;
-      margin-bottom: 20px;
-    }
-    #start-btn {
-      padding: 12px 24px;
-      font-size: 18px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      background: #4CAF50;
-      color: white;
-    }
-    .bar {
-      position: absolute;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      border-radius: 4px;
-      user-select: none;
-      cursor: grab;
-      touch-action: none;
-      transition: left 0.2s, width 0.2s, height 0.2s;
-    }
-    #dropzone {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-      height: 200px;
-      border: 2px dashed #333;
-      border-radius: 8px;
-    }
-    .refresh-btn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      z-index: 1000;
-    }
-    .refresh-icon { width: 24px; height: 24px; fill: currentColor; }
-    #timer {
-      position: absolute;
-      left: 50%;
-      bottom: 300px;
-      transform: translateX(-50%);
-      font-size: 24px;
-      font-weight: bold;
-      z-index: 1000;
-    }
-    #submit-btn {
-      position: absolute;
-      left: 50%;
-      bottom: 230px;
-      transform: translateX(-50%);
-      padding: 10px 20px;
-      font-size: 16px;
-      border: 2px solid #333;
-      border-radius: 4px;
-      background: #fff;
-      cursor: pointer;
-      z-index: 1000;
-    }
-    #message-box {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 20px 30px;
-      border-radius: 8px;
-      font-size: 18px;
-      color: white;
-      z-index: 1000;
-      display: none;
-    }
-    .success { background: #4CAF50; }
-    .error { background: #f44336; animation: shake 0.6s; }
-    @keyframes shake {
-      0% { transform: translate(-50%, -50%) translateX(0); }
-      20% { transform: translate(-50%, -50%) translateX(-10px); }
-      40% { transform: translate(-50%, -50%) translateX(10px); }
-      60% { transform: translate(-50%, -50%) translateX(-10px); }
-      80% { transform: translate(-50%, -50%) translateX(10px); }
-      100% { transform: translate(-50%, -50%) translateX(0); }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Start screen before game begins -->
+  <!-- 1) Start screen -->
   <div id="start-screen">
     <div id="start-container">
       <p>Put the musical keys in the correct order as fast as you can.</p>
@@ -125,229 +16,23 @@
     </div>
   </div>
 
-  <!-- Game controls -->
+  <!-- 2) Controls -->
   <button id="refresh-btn" class="refresh-btn" title="Clear All" aria-label="Clear All">
-    <svg class="refresh-icon" viewBox="0 0 24 24"><path d="M12 5V2L7 6.5l5 4.5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+    <svg class="refresh-icon" viewBox="0 0 24 24">
+      <path d="M12 5V2L7 6.5l5 4.5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+    </svg>
   </button>
-  <div id="timer">00:00.0</div>
   <button id="submit-btn">Submit</button>
-  <div id="message-box"></div>
+
+  <!-- 3) Dropzone “table” -->
   <div id="dropzone"></div>
 
-  <script>
-    // Element references
-    const refreshBtn = document.getElementById('refresh-btn');
-    const startBtn = document.getElementById('start-btn');
-    const submitBtn = document.getElementById('submit-btn');
-    const timerEl = document.getElementById('timer');
-    const messageBox = document.getElementById('message-box');
-    const startScreen = document.getElementById('start-screen');
-    const dropZone = document.getElementById('dropzone');
+  <!-- 4) Timer below table -->
+  <div id="timer">00:00.0</div>
 
-    // Colors and scale
-    const colors = { C: 'red', D: 'orange', E: 'yellow', F: 'green', G: 'turquoise', A: 'blue', B: 'purple' };
-    const naturalScale = ['C','D','E','F','G','A','B'];
-    let root, notes = [], dropOrder = [];
+  <!-- Messages -->
+  <div id="message-box"></div>
 
-    // Timer
-    let timerInterval, startTime;
-
-    // Responsive sizing
-    let currentBarWidth=60, currentGap=20;
-    const maxBar=60, maxGap=20, minGap=5, minBar=30;
-    const heightRatio=150/60;
-
-    // Messages
-    const successMessages = [
-      "You did it! You're like a baby Mozart!",
-      "Congratulations, you'd make Beethoven proud.",
-      "Amazing, you understand music better than The Beatles.",
-      "Bravo! You're composing your own legend!",
-      "Fantastic! You’ve got perfect pitch on ordering!"
-    ];
-    const errorMessages = [
-      "I'm going to close my eyes and let you try again on this one.",
-      "You do understand the alphabet, don't you? Try again.",
-      "Let's pretend this didn't happen, try again.",
-      "Oops! That hit a wrong note—start over!",
-      "Not quite—refresh and take it from the top!"
-    ];
-
-    // Helpers
-    function shuffleArray(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-
-    function computeSizes() {
-      const W = dropZone.getBoundingClientRect().width;
-      const n = naturalScale.length + 1;
-      let gap = (W - n * maxBar) / (n - 1);
-      if (gap > maxGap) gap = maxGap;
-      let bar;
-      if (gap < minGap) {
-        gap = minGap;
-        bar = (W - (n - 1) * gap) / n;
-        if (bar < minBar) bar = minBar;
-      } else {
-        bar = maxBar;
-      }
-      return {barWidth: bar, gap};
-    }
-
-    function initScale() {
-      root = naturalScale[Math.floor(Math.random() * naturalScale.length)];
-      notes = [];
-      const startIndex = naturalScale.indexOf(root);
-      for (let i = 0; i < naturalScale.length; i++) {
-        notes.push(naturalScale[(startIndex + i) % naturalScale.length]);
-      }
-      notes.push(root);
-    }
-
-    function createBars() {
-      document.querySelectorAll('.bar').forEach(b => b.remove());
-      notes.forEach(note => {
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        bar.textContent = note;
-        bar.style.background = colors[note];
-        document.body.appendChild(bar);
-        makeDraggable(bar);
-      });
-    }
-
-    function makeDraggable(elem) {
-      elem.addEventListener('pointerdown', e => {
-        elem.setPointerCapture(e.pointerId);
-        const rect = elem.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
-        function onMove(e) {
-          elem.style.left = `${e.clientX - offsetX}px`;
-          elem.style.top = `${e.clientY - offsetY}px`;
-        }
-        function onUp(e) {
-          elem.releasePointerCapture(e.pointerId);
-          document.removeEventListener('pointermove', onMove);
-          document.removeEventListener('pointerup', onUp);
-          handleDrop(elem);
-        }
-        document.addEventListener('pointermove', onMove);
-        document.addEventListener('pointerup', onUp);
-      });
-    }
-
-    function handleDrop(elem) {
-      const dz = dropZone.getBoundingClientRect();
-      const pos = elem.getBoundingClientRect();
-      const cx = pos.left + pos.width / 2;
-      const cy = pos.top + pos.height / 2;
-      if (cx > dz.left && cx < dz.right && cy > dz.top && cy < dz.bottom) {
-        dropOrder = dropOrder.filter(b => b !== elem);
-        let insertIndex = 0;
-        dropOrder.forEach((b, i) => {
-          const bc = b.getBoundingClientRect().left + b.getBoundingClientRect().width / 2;
-          if (cx > bc) insertIndex = i + 1;
-        });
-        dropOrder.splice(insertIndex, 0, elem);
-        repositionBars();
-      } else {
-        if (dropOrder.includes(elem)) {
-          dropOrder = dropOrder.filter(b => b !== elem);
-          repositionBars();
-        }
-        resetPosition(elem);
-      }
-    }
-
-    function repositionBars() {
-      const dz = dropZone.getBoundingClientRect();
-      const n = dropOrder.length;
-      if (!n) return;
-      const total = n * currentBarWidth + (n - 1) * currentGap;
-      const startX = dz.left + (dz.width - total) / 2;
-      const y = dz.top + 20;
-      dropOrder.forEach((b, i) => {
-        b.style.left = `${startX + i * (currentBarWidth + currentGap)}px`;
-        b.style.top = `${y}px`;
-      });
-    }
-
-    function resetPosition(bar) {
-      bar.style.left = bar.dataset.originalLeft;
-      bar.style.top = bar.dataset.originalTop;
-    }
-
-    function updateTimer() {
-      const elapsed = Date.now() - startTime;
-      const minutes = Math.floor(elapsed / 60000);
-      const seconds = Math.floor((elapsed % 60000) / 1000);
-      const tenths = Math.floor((elapsed % 1000) / 100);
-      timerEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}.${tenths}`;
-    }
-
-    function startTimer() {
-      startTime = Date.now();
-      updateTimer();
-      timerInterval = setInterval(updateTimer, 100);
-    }
-
-    function stopTimer() {
-      clearInterval(timerInterval);
-      updateTimer();
-    }
-
-    function shuffleAndReset() {
-      initScale();
-      createBars();
-      const {barWidth, gap} = computeSizes();
-      currentBarWidth = barWidth;
-      currentGap = gap;
-      document.querySelectorAll('.bar').forEach((bar, i) => {
-        bar.style.width = `${currentBarWidth}px`;
-        bar.style.height = `${currentBarWidth * heightRatio}px`;
-        const x = 20 + i * (currentBarWidth + currentGap);
-        bar.style.left = `${x}px`;
-        bar.style.top = '20px';
-        bar.dataset.originalLeft = `${x}px`;
-        bar.dataset.originalTop = '20px';
-      });
-      dropOrder = [];
-      messageBox.style.display = 'none';
-      timerEl.textContent = '00:00.0';
-      startScreen.style.display = 'flex';
-    }
-
-    function showMessage(type) {
-      const list = type === 'success' ? successMessages : errorMessages;
-      messageBox.textContent = list[Math.floor(Math.random() * list.length)];
-      messageBox.className = type;
-      messageBox.style.display = 'block';
-      setTimeout(() => {
-        function onClick() {
-          messageBox.style.display = 'none';
-          if (type === 'error') shuffleAndReset();
-          document.removeEventListener('click', onClick);
-        }
-        document.addEventListener('click', onClick);
-      }, 0);
-    }
-
-    refreshBtn.addEventListener('click', shuffleAndReset);
-    startBtn.addEventListener('click', () => {
-      startScreen.style.display = 'none';
-      startTimer();
-    });
-    submitBtn.addEventListener('click', () => {
-      stopTimer();
-      const correct = dropOrder.length === notes.length && notes.every((n, i) => dropOrder[i].textContent === n);
-      showMessage(correct ? 'success' : 'error');
-    });
-
-    window.addEventListener('load', shuffleAndReset);
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
